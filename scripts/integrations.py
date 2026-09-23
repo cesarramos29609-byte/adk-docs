@@ -33,10 +33,25 @@ def define_env(env):
         Args:
             path_filter: A glob pattern relative to the docs directory, e.g., "tools/google-cloud/*.md"
         """
+        # Prevent path traversal references in path_filter
+        if ".." in Path(path_filter).parts:
+            log.warning(f"Invalid path filter containing parent directory references: {path_filter}")
+            return ""
+
         # docs_dir is usually where mkdocs.yml is, or explicitly set.
         # env.conf['docs_dir'] is the absolute path to docs.
-        docs_dir = Path(env.conf['docs_dir'])
-        files = sorted(docs_dir.glob(path_filter))
+        docs_dir = Path(env.conf['docs_dir']).resolve()
+        matching_files = sorted(docs_dir.glob(path_filter))
+        files = []
+        for file_path in matching_files:
+            try:
+                resolved_file = file_path.resolve()
+                if docs_dir in resolved_file.parents or resolved_file == docs_dir:
+                    files.append(file_path)
+                else:
+                    log.warning(f"Access denied: file {file_path} is outside docs directory.")
+            except Exception as e:
+                log.warning(f"Error resolving path {file_path}: {e}")
 
         # Collect all tags and cards data first
         all_tags = set()
@@ -122,7 +137,7 @@ def define_env(env):
         for tag in sorted_tags:
             safe_tag = html.escape(tag)
             # handle MCP button all caps display exception:
-            display_name = "MCP" if tag.lower() == "mcp" else safe_tag.title()
+            display_name = "MCP" if tag.lower() == "mcp" else html.escape(tag.title())
             html_parts.append(f'<button class="catalog-filter-btn" data-filter="{safe_tag}">{display_name}</button>')
         html_parts.append('</div>')
 
