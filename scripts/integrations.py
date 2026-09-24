@@ -82,21 +82,25 @@ def define_env(env):
                     tags = [tags]
 
                 # Normalize tags to lowercase for consistent filtering
-                tags = [t.lower() for t in tags]
+                tags = [str(t).lower() for t in tags if t is not None]
                 all_tags.update(tags)
 
                 # Calculate root-relative link from file path
                 rel_path = file_path.relative_to(docs_dir).with_suffix('')
                 link = f"/{rel_path}/"
 
-                # Ensure icon path is root-relative
-                if not icon.startswith('/') and not icon.startswith('http'):
-                     icon = f"/{icon}"
+                # Validate and ensure icon path is safe and root-relative
+                icon_str = str(icon).strip() if icon else '/integrations/assets/toolbox.svg'
+                icon_lower = icon_str.lower()
+                if icon_lower.startswith(('javascript:', 'data:', 'vbscript:', 'file:')):
+                    icon_str = '/integrations/assets/toolbox.svg'
+                elif not icon_str.startswith('/') and not icon_str.startswith(('http://', 'https://')):
+                    icon_str = f"/{icon_str}"
 
                 cards_data.append({
-                    'title': title,
-                    'description': description,
-                    'icon': icon,
+                    'title': str(title) if title else '',
+                    'description': str(description) if description else '',
+                    'icon': icon_str,
                     'link': link,
                     'tags': tags
                 })
@@ -205,11 +209,10 @@ def define_env(env):
             const urlParams = new URLSearchParams(window.location.search);
             const topic = urlParams.get('topic');
             if (topic) {{
-                // Validate topic exists in buttons to avoid empty states if possible
-                // or just try to filter
-                const matchingBtn = Array.from(buttons).find(btn => btn.getAttribute('data-filter') === topic);
+                const topicLower = topic.toLowerCase();
+                const matchingBtn = Array.from(buttons).find(btn => btn.getAttribute('data-filter') === topicLower);
                 if (matchingBtn) {{
-                    filterCards(topic.toLowerCase());
+                    filterCards(topicLower);
                 }}
             }}
         }}
