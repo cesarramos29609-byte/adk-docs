@@ -89,9 +89,12 @@ def define_env(env):
                 rel_path = file_path.relative_to(docs_dir).with_suffix('')
                 link = f"/{rel_path}/"
 
-                # Ensure icon path is root-relative
-                if not icon.startswith('/') and not icon.startswith('http'):
-                     icon = f"/{icon}"
+                # Sanitize icon URL to block unsafe protocol schemes (XSS protection)
+                icon_lower = str(icon).strip().lower()
+                if icon_lower.startswith(('javascript:', 'data:', 'vbscript:')):
+                    icon = '/integrations/assets/toolbox.svg'
+                elif not icon.startswith('/') and not icon_lower.startswith(('http://', 'https://')):
+                    icon = f"/{icon}"
 
                 cards_data.append({
                     'title': title,
@@ -122,8 +125,9 @@ def define_env(env):
         for tag in sorted_tags:
             safe_tag = html.escape(tag)
             # handle MCP button all caps display exception:
-            display_name = "MCP" if tag.lower() == "mcp" else safe_tag.title()
-            html_parts.append(f'<button class="catalog-filter-btn" data-filter="{safe_tag}">{display_name}</button>')
+            display_name = "MCP" if tag.lower() == "mcp" else tag.title()
+            safe_display_name = html.escape(display_name)
+            html_parts.append(f'<button class="catalog-filter-btn" data-filter="{safe_tag}">{safe_display_name}</button>')
         html_parts.append('</div>')
 
         # Grid
@@ -205,11 +209,12 @@ def define_env(env):
             const urlParams = new URLSearchParams(window.location.search);
             const topic = urlParams.get('topic');
             if (topic) {{
+                const normalizedTopic = topic.toLowerCase();
                 // Validate topic exists in buttons to avoid empty states if possible
                 // or just try to filter
-                const matchingBtn = Array.from(buttons).find(btn => btn.getAttribute('data-filter') === topic);
+                const matchingBtn = Array.from(buttons).find(btn => btn.getAttribute('data-filter') === normalizedTopic);
                 if (matchingBtn) {{
-                    filterCards(topic.toLowerCase());
+                    filterCards(normalizedTopic);
                 }}
             }}
         }}
