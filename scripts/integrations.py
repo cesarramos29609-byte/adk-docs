@@ -17,6 +17,24 @@ import html
 from pathlib import Path
 from mkdocs.plugins import log
 
+DEFAULT_ICON = '/integrations/assets/toolbox.svg'
+
+def _is_safe_url(url: str) -> bool:
+    """Validates that a URL or path uses a safe scheme (http, https, or relative path).
+
+    Prevents XSS via unsafe URI schemes like javascript:, data:, or vbscript: in frontmatter.
+    """
+    if not url or not isinstance(url, str):
+        return False
+    url_lower = url.strip().lower()
+    if url_lower.startswith(('javascript:', 'data:', 'vbscript:')):
+        return False
+    # Safe if absolute URL (http/https), root-relative path (/), or relative path with no protocol scheme
+    first_segment = url_lower.split('/')[0]
+    if ':' in first_segment and not url_lower.startswith(('http://', 'https://')):
+        return False
+    return True
+
 def define_env(env):
     """
     This is the hook for defining variables, macros and filters.
@@ -75,7 +93,9 @@ def define_env(env):
                     frontmatter.get('description', ''))
                 icon = frontmatter.get('catalog_icon',
                     frontmatter.get('tool_icon',
-                    frontmatter.get('icon', '/integrations/assets/toolbox.svg'))) # Default icon
+                    frontmatter.get('icon', DEFAULT_ICON))) # Default icon
+                if not isinstance(icon, str):
+                    icon = DEFAULT_ICON
 
                 tags = frontmatter.get('catalog_tags', [])
                 if isinstance(tags, str):
@@ -89,9 +109,14 @@ def define_env(env):
                 rel_path = file_path.relative_to(docs_dir).with_suffix('')
                 link = f"/{rel_path}/"
 
-                # Ensure icon path is root-relative
-                if not icon.startswith('/') and not icon.startswith('http'):
-                     icon = f"/{icon}"
+                # Sanitize against unsafe URI schemes (e.g. javascript:, data:) BEFORE path normalization
+                if not _is_safe_url(icon):
+                    log.warning(f"Unsafe icon URI in {file_path}: {icon}")
+                    icon = DEFAULT_ICON
+
+                # Ensure icon path is root-relative or a safe absolute URL
+                if not icon.startswith('/') and not icon.startswith(('http://', 'https://')):
+                    icon = f"/{icon}"
 
                 cards_data.append({
                     'title': title,
