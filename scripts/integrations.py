@@ -47,6 +47,14 @@ def define_env(env):
             if file_path.name == 'index.md':
                 continue
 
+            # Prevent path traversal by ensuring files remain within docs_dir
+            try:
+                if not file_path.resolve().is_relative_to(docs_dir.resolve()):
+                    log.warning(f"Security: Skipping file outside docs_dir: {file_path}")
+                    continue
+            except Exception:
+                continue
+
             try:
                 content = file_path.read_text(encoding='utf-8')
                 # Simple frontmatter extraction
@@ -205,9 +213,9 @@ def define_env(env):
             const urlParams = new URLSearchParams(window.location.search);
             const topic = urlParams.get('topic');
             if (topic) {{
-                // Validate topic exists in buttons to avoid empty states if possible
+                // Validate topic exists in buttons (case-insensitive) to avoid empty states
                 // or just try to filter
-                const matchingBtn = Array.from(buttons).find(btn => btn.getAttribute('data-filter') === topic);
+                const matchingBtn = Array.from(buttons).find(btn => btn.getAttribute('data-filter') === topic.toLowerCase());
                 if (matchingBtn) {{
                     filterCards(topic.toLowerCase());
                 }}
