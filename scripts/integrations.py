@@ -17,6 +17,18 @@ import html
 from pathlib import Path
 from mkdocs.plugins import log
 
+def sanitize_url(url: str) -> str:
+    """
+    Sanitizes URL to ensure it uses safe schemes (http, https, or root-relative paths)
+    and prevents javascript: or data: URIs in HTML attributes.
+    """
+    if not url:
+        return "#"
+    cleaned = url.strip()
+    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+        return cleaned
+    return "#"
+
 def define_env(env):
     """
     This is the hook for defining variables, macros and filters.
@@ -89,15 +101,15 @@ def define_env(env):
                 rel_path = file_path.relative_to(docs_dir).with_suffix('')
                 link = f"/{rel_path}/"
 
-                # Ensure icon path is root-relative
-                if not icon.startswith('/') and not icon.startswith('http'):
+                # Ensure icon path is root-relative if not an absolute HTTP(S) URL
+                if not icon.startswith('/') and not (icon.startswith('http://') or icon.startswith('https://')):
                      icon = f"/{icon}"
 
                 cards_data.append({
                     'title': title,
                     'description': description,
-                    'icon': icon,
-                    'link': link,
+                    'icon': sanitize_url(icon),
+                    'link': sanitize_url(link),
                     'tags': tags
                 })
 
@@ -133,8 +145,8 @@ def define_env(env):
 
             # Escape content to prevent XSS
             safe_tags = html.escape(tags_str)
-            safe_link = html.escape(card['link'])
-            safe_icon = html.escape(card['icon'])
+            safe_link = html.escape(sanitize_url(card['link']))
+            safe_icon = html.escape(sanitize_url(card['icon']))
             safe_title = html.escape(card['title'])
             safe_desc = html.escape(card['description'])
 
