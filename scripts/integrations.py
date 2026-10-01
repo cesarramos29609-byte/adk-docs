@@ -20,12 +20,17 @@ from mkdocs.plugins import log
 def sanitize_url(url: str) -> str:
     """
     Sanitizes URL to ensure it uses safe schemes (http, https, or root-relative paths)
-    and prevents javascript: or data: URIs in HTML attributes.
+    and prevents javascript:, data:, or protocol-relative (//) URIs in HTML attributes.
     """
     if not url:
         return "#"
     cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    # Reject protocol-relative URLs (//) and backslash variants (/\, \\) to prevent open redirects
+    if cleaned.startswith('//') or cleaned.startswith('/\\') or cleaned.startswith('\\'):
+        return "#"
+
+    cleaned_lower = cleaned.lower()
+    if cleaned.startswith('/') or cleaned_lower.startswith('http://') or cleaned_lower.startswith('https://'):
         return cleaned
     return "#"
 
@@ -110,7 +115,8 @@ def define_env(env):
                 link = f"/{rel_path}/"
 
                 # Ensure icon path is root-relative if not an absolute HTTP(S) URL
-                if not icon.startswith('/') and not (icon.startswith('http://') or icon.startswith('https://')):
+                icon_lower = icon.lower()
+                if not icon.startswith('/') and not (icon_lower.startswith('http://') or icon_lower.startswith('https://')):
                      icon = f"/{icon}"
 
                 cards_data.append({
