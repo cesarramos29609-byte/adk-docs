@@ -20,12 +20,14 @@ from mkdocs.plugins import log
 def sanitize_url(url: str) -> str:
     """
     Sanitizes URL to ensure it uses safe schemes (http, https, or root-relative paths)
-    and prevents javascript: or data: URIs in HTML attributes.
+    and prevents javascript:, data:, or protocol-relative (//) URIs in HTML attributes.
     """
     if not url:
         return "#"
     cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    # Prevent protocol-relative URLs (//) and backslash redirects (/\\ or \\)
+    if (cleaned.startswith('/') and not cleaned.startswith('//') and not cleaned.startswith('/\\') and not cleaned.startswith('\\')) or \
+       cleaned.startswith('http://') or cleaned.startswith('https://'):
         return cleaned
     return "#"
 
@@ -142,7 +144,7 @@ def define_env(env):
         for tag in sorted_tags:
             safe_tag = html.escape(tag)
             # handle MCP button all caps display exception:
-            display_name = "MCP" if tag.lower() == "mcp" else safe_tag.title()
+            display_name = "MCP" if tag.lower() == "mcp" else html.escape(tag.title())
             html_parts.append(f'<button class="catalog-filter-btn" data-filter="{safe_tag}">{display_name}</button>')
         html_parts.append('</div>')
 
