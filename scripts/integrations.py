@@ -25,7 +25,10 @@ def sanitize_url(url: str) -> str:
     if not url:
         return "#"
     cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    lower_cleaned = cleaned.lower()
+    if lower_cleaned.startswith('http://') or lower_cleaned.startswith('https://'):
+        return cleaned
+    if cleaned.startswith('/') and not cleaned.startswith('//') and not cleaned.startswith('/\\'):
         return cleaned
     return "#"
 
