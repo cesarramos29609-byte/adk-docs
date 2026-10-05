@@ -20,12 +20,17 @@ from mkdocs.plugins import log
 def sanitize_url(url: str) -> str:
     """
     Sanitizes URL to ensure it uses safe schemes (http, https, or root-relative paths)
-    and prevents javascript: or data: URIs in HTML attributes.
+    and prevents javascript: or data: URIs in HTML attributes, as well as protocol-relative
+    URLs (e.g. //attacker.com) which can bypass domain restrictions.
     """
     if not url:
         return "#"
     cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    # Disallow protocol-relative URLs (e.g. '//attacker.com')
+    if cleaned.startswith('//'):
+        return "#"
+    cleaned_lower = cleaned.lower()
+    if cleaned.startswith('/') or cleaned_lower.startswith('http://') or cleaned_lower.startswith('https://'):
         return cleaned
     return "#"
 
