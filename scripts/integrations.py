@@ -20,13 +20,29 @@ from mkdocs.plugins import log
 def sanitize_url(url: str) -> str:
     """
     Sanitizes URL to ensure it uses safe schemes (http, https, or root-relative paths)
-    and prevents javascript: or data: URIs in HTML attributes.
+    and prevents protocol-relative URLs (//), backslash tricks (/\\, \\\\), or javascript:/data: URIs.
     """
     if not url:
         return "#"
-    cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    # Remove control characters and strip whitespace
+    cleaned = "".join(c for c in str(url) if ord(c) >= 32).strip()
+
+    # Reject protocol-relative URLs or backslash-prefixed paths that browsers treat as scheme-relative
+    if cleaned.startswith('//') or cleaned.startswith('/\\') or cleaned.startswith('\\'):
+        return "#"
+
+    # Check for safe root-relative path
+    if cleaned.startswith('/'):
+        # Ensure first path segment doesn't contain a scheme colon (e.g., /javascript:alert(1))
+        first_segment = cleaned.split('/')[1] if len(cleaned.split('/')) > 1 else ""
+        if ':' in first_segment:
+            return "#"
         return cleaned
+
+    # Check for safe HTTP/HTTPS URL
+    if cleaned.startswith('http://') or cleaned.startswith('https://'):
+        return cleaned
+
     return "#"
 
 def define_env(env):
@@ -113,10 +129,14 @@ def define_env(env):
                 if not icon.startswith('/') and not (icon.startswith('http://') or icon.startswith('https://')):
                      icon = f"/{icon}"
 
+                sanitized_icon = sanitize_url(icon)
+                if sanitized_icon == "#":
+                    sanitized_icon = "/integrations/assets/toolbox.svg"
+
                 cards_data.append({
                     'title': title,
                     'description': description,
-                    'icon': sanitize_url(icon),
+                    'icon': sanitized_icon,
                     'link': sanitize_url(link),
                     'tags': tags
                 })
