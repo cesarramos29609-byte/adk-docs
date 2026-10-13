@@ -15,17 +15,24 @@
 import yaml
 import html
 from pathlib import Path
+from urllib.parse import urlparse
 from mkdocs.plugins import log
 
 def sanitize_url(url: str) -> str:
     """
     Sanitizes URL to ensure it uses safe schemes (http, https, or root-relative paths)
-    and prevents javascript: or data: URIs in HTML attributes.
+    and prevents protocol-relative URLs (//evil.com), javascript:, or data: URIs in HTML attributes.
     """
     if not url:
         return "#"
     cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    # Reject protocol-relative or backslash-bypassed relative URLs
+    if cleaned.startswith('//') or cleaned.startswith('/\\'):
+        return "#"
+    if cleaned.startswith('/'):
+        return cleaned
+    parsed = urlparse(cleaned)
+    if parsed.scheme.lower() in ('http', 'https'):
         return cleaned
     return "#"
 
