@@ -25,9 +25,23 @@ def sanitize_url(url: str) -> str:
     if not url:
         return "#"
     cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    if cleaned.startswith('//'):
+        return "#"
+
+    # Disallow dangerous or unknown schemes (e.g. javascript:, data:, vbscript:)
+    colon_idx = cleaned.find(':')
+    slash_idx = cleaned.find('/')
+
+    if colon_idx != -1 and (slash_idx == -1 or colon_idx < slash_idx):
+        scheme = cleaned[:colon_idx].lower()
+        if scheme not in ('http', 'https'):
+            return "#"
         return cleaned
-    return "#"
+
+    if cleaned.startswith('/'):
+        return cleaned
+
+    return f"/{cleaned}"
 
 def define_env(env):
     """
@@ -108,10 +122,6 @@ def define_env(env):
                 # Calculate root-relative link from file path
                 rel_path = file_path.relative_to(docs_dir).with_suffix('')
                 link = f"/{rel_path}/"
-
-                # Ensure icon path is root-relative if not an absolute HTTP(S) URL
-                if not icon.startswith('/') and not (icon.startswith('http://') or icon.startswith('https://')):
-                     icon = f"/{icon}"
 
                 cards_data.append({
                     'title': title,
