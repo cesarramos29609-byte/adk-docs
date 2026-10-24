@@ -18,14 +18,17 @@ from pathlib import Path
 from mkdocs.plugins import log
 
 def sanitize_url(url: str) -> str:
-    """
+    r"""
     Sanitizes URL to ensure it uses safe schemes (http, https, or root-relative paths)
-    and prevents javascript: or data: URIs in HTML attributes.
+    and prevents javascript:, data:, or protocol-relative (// or /\) URIs in HTML attributes.
     """
     if not url:
         return "#"
     cleaned = url.strip()
-    if cleaned.startswith('/') or cleaned.startswith('http://') or cleaned.startswith('https://'):
+    if cleaned.startswith('http://') or cleaned.startswith('https://'):
+        return cleaned
+    # Ensure root-relative paths start with / but not // or /\ (protocol-relative / bypasses)
+    if cleaned.startswith('/') and not (cleaned.startswith('//') or cleaned.startswith('/\\')):
         return cleaned
     return "#"
 
