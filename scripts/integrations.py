@@ -142,7 +142,8 @@ def define_env(env):
         for tag in sorted_tags:
             safe_tag = html.escape(tag)
             # handle MCP button all caps display exception:
-            display_name = "MCP" if tag.lower() == "mcp" else safe_tag.title()
+            raw_display = "MCP" if tag.lower() == "mcp" else tag.title()
+            display_name = html.escape(raw_display)
             html_parts.append(f'<button class="catalog-filter-btn" data-filter="{safe_tag}">{display_name}</button>')
         html_parts.append('</div>')
 
